@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeOS — Connecting Whoop...</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0a0b;color:#f0ede8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;text-align:center}
+  .wrap{max-width:360px;width:100%}
+  .logo{font-size:28px;font-weight:800;margin-bottom:28px}
+  .logo span{color:#555350;font-weight:400}
+  .spinner{width:36px;height:36px;border:3px solid #222;border-top-color:#c8ff00;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 20px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .msg{font-size:14px;color:#8a8782;line-height:1.6;margin-bottom:12px}
+  .ok{font-size:18px;font-weight:700;color:#2dbd6e;margin-bottom:10px}
+  .err{font-size:16px;font-weight:700;color:#e05252;margin-bottom:10px}
+  .card{background:#111113;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px;margin-top:16px;text-align:left}
+  .card-title{font-size:12px;font-weight:700;color:#c8ff00;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+  .step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;font-size:13px;color:#8a8782}
+  .step:last-child{margin-bottom:0}
+  .snum{width:20px;height:20px;border-radius:50%;background:rgba(200,255,0,.1);border:1px solid rgba(200,255,0,.3);color:#c8ff00;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .btn{display:inline-block;margin-top:16px;padding:12px 24px;border-radius:10px;background:#c8ff00;color:#000;font-weight:700;font-size:14px;cursor:pointer;border:none;width:100%;-webkit-appearance:none}
+  a{color:#4a9eff;text-decoration:none}
+  .detail{font-family:monospace;font-size:10px;color:#555350;margin-top:8px;word-break:break-all;background:#0a0a0b;padding:6px 8px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">trade<span>OS</span></div>
+  <div id="ui">
+    <div class="spinner"></div>
+    <div class="msg">Connecting to Whoop...</div>
+  </div>
+</div>
+
+<script>
+var CLIENT_ID     = '5bf50b0e-42d1-4fba-bb75-1e0ddcbdba68';
+var CLIENT_SECRET = '2ea95af63c30a70c6d281a2831c8c162b3b11746ad74335b1feed8026e610ebd';
+var REDIRECT_URI  = 'https://jwmba2015-lab.github.io/tradeos/whoop-callback.html';
+var TOKEN_URL     = 'https://api.prod.whoop.com/oauth/oauth2/token';
+var APP_URL       = 'https://jwmba2015-lab.github.io/tradeos/';
+
+function show(html) {
+  document.getElementById('ui').innerHTML = html;
+}
+
+function goHome() {
+  window.location.href = APP_URL;
+}
+
+function showSafariHelp(errorCode) {
+  show(
+    '<div class="err">&#10005; ' + (errorCode || 'Connection failed') + '</div>' +
+    '<div class="msg">Safari\'s privacy settings are blocking the Whoop connection. Here\'s how to fix it:</div>' +
+    '<div class="card">' +
+      '<div class="card-title">Option A &mdash; Temporarily allow cross-site tracking</div>' +
+      '<div class="step"><div class="snum">1</div><div>On your Mac, open <strong style="color:#f0ede8">Safari &rarr; Settings &rarr; Privacy</strong></div></div>' +
+      '<div class="step"><div class="snum">2</div><div>Uncheck <strong style="color:#f0ede8">"Prevent cross-site tracking"</strong></div></div>' +
+      '<div class="step"><div class="snum">3</div><div>Go back to TradeOS and tap Connect Whoop again</div></div>' +
+      '<div class="step"><div class="snum">4</div><div>Once connected, re-enable the setting</div></div>' +
+    '</div>' +
+    '<div class="card" style="margin-top:10px">' +
+      '<div class="card-title">Option B &mdash; Use Chrome (easiest)</div>' +
+      '<div class="step"><div class="snum">1</div><div>Open <strong style="color:#f0ede8">Chrome</strong> on your Mac</div></div>' +
+      '<div class="step"><div class="snum">2</div><div>Go to <strong style="color:#f0ede8">jwmba2015-lab.github.io/tradeos</strong></div></div>' +
+      '<div class="step"><div class="snum">3</div><div>Connect Whoop &mdash; works first try in Chrome</div></div>' +
+      '<div class="step"><div class="snum">4</div><div>Token saves to the browser &mdash; then use Safari normally</div></div>' +
+    '</div>' +
+    '<button class="btn" onclick="goHome()">&#8592; Back to TradeOS</button>'
+  );
+}
+
+function showSuccess() {
+  show(
+    '<div class="ok">&#10003; Whoop Connected!</div>' +
+    '<div class="msg">Your recovery, HRV and sleep data will now sync automatically every time you open TradeOS.</div>' +
+    '<div class="msg" style="color:#2dbd6e;margin-top:8px">Returning to TradeOS...</div>'
+  );
+  setTimeout(goHome, 2000);
+}
+
+function showError(msg, detail) {
+  show(
+    '<div class="err">&#10005; Connection failed</div>' +
+    '<div class="msg">' + msg + '</div>' +
+    (detail ? '<div class="detail">' + detail + '</div>' : '') +
+    '<button class="btn" onclick="goHome()" style="margin-top:16px">&#8592; Back to TradeOS</button>'
+  );
+}
+
+// Parse URL params safely without URLSearchParams (better Safari compat)
+function getParam(name) {
+  var query = window.location.search.slice(1);
+  var pairs = query.split('&');
+  for (var i = 0; i < pairs.length; i++) {
+    var eq = pairs[i].indexOf('=');
+    if (eq > -1) {
+      var key = decodeURIComponent(pairs[i].slice(0, eq));
+      var val = decodeURIComponent(pairs[i].slice(eq + 1).replace(/\+/g, ' '));
+      if (key === name) return val;
+    }
+  }
+  return null;
+}
+
+var code  = getParam('code');
+var error = getParam('error');
+
+if (error) {
+  // invalid_state = Safari ITP issue
+  if (error === 'invalid_state' || error === 'access_denied') {
+    showSafariHelp(error);
+  } else {
+    showError('Whoop returned an error: ' + error, getParam('error_description') || '');
+  }
+} else if (!code) {
+  showError('No authorization code received. Please try again.');
+} else {
+  // Exchange code for token
+  show('<div class="spinner"></div><div class="msg">Almost there &mdash; completing connection...</div>');
+
+  var body = 'grant_type=authorization_code' +
+    '&code='          + encodeURIComponent(code) +
+    '&client_id='     + encodeURIComponent(CLIENT_ID) +
+    '&client_secret=' + encodeURIComponent(CLIENT_SECRET) +
+    '&redirect_uri='  + encodeURIComponent(REDIRECT_URI);
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', TOKEN_URL, true);
+  xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    try {
+      var data = JSON.parse(xhr.responseText);
+      if (data.access_token) {
+        try {
+          localStorage.setItem('whoop_access_token',  data.access_token);
+          localStorage.setItem('whoop_refresh_token', data.refresh_token || '');
+          localStorage.setItem('whoop_token_expiry',  String(Date.now() + (data.expires_in || 3600) * 1000));
+        } catch(e) {
+          // localStorage blocked - still show success, user will need to reconnect next session
+          console.log('localStorage error:', e);
+        }
+        showSuccess();
+      } else if (data.error) {
+        showError('Whoop rejected the token request: ' + data.error, data.error_description || '');
+      } else {
+        showError('Unexpected response from Whoop.', xhr.responseText.slice(0, 200));
+      }
+    } catch(e) {
+      // JSON parse failed - likely CORS error
+      showSafariHelp('cors_blocked');
+    }
+  };
+  xhr.onerror = function() {
+    showSafariHelp('network_blocked');
+  };
+  xhr.send(body);
+}
+</script>
+</body>
+</html>
